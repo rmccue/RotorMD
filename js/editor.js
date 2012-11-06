@@ -7,7 +7,6 @@ jQuery(function ($) {
 		},
 		mode: 'markdown',
 		matchBrackets: true,
-		theme: "monokai",
 		lineWrapping: true,
 		indentWithTabs: true
 	};
