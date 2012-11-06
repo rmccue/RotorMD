@@ -19,10 +19,6 @@ class Rotor_MarkdownEditor {
 		add_filter('screen_layout_columns', array(__CLASS__, 'force_columns'));
 
 		add_filter('the_editor', array(__CLASS__, 'the_editor'));
-		add_filter('tiny_mce_plugins', '__return_empty_array');
-		add_filter('tiny_mce_before_init', array(__CLASS__, 'tiny_mce_before_init'), 10, 2);
-		add_action('after_wp_tiny_mce', array(__CLASS__, 'after_wp_tiny_mce'));
-		#add_filter('get_user_option_screen_layout_post', function () { return 1; });
 
 		$saver = new Rotor_MarkdownEditor_Saver();
 	}
