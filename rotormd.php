@@ -5,7 +5,7 @@ Author: Ryan McCue
 Author URI: http://ryanmccue.info/
 Description: Replaces your content editor with a Markdown editor with live previewing!
 License: GPL
-Version: 0.1
+Version: 0.2-dev
 */
 
 require_once(dirname(__FILE__) . '/saver.php');
