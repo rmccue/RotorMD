@@ -14,13 +14,40 @@ Rotor_MarkdownEditor::bootstrap();
 
 class Rotor_MarkdownEditor {
 	public static function bootstrap() {
-		add_action("load-post-new.php", array(__CLASS__, 'page_load'));
-		add_action("load-post.php", array(__CLASS__, 'page_load'));
-		add_filter('screen_layout_columns', array(__CLASS__, 'force_columns'));
-
-		add_filter('the_editor', array(__CLASS__, 'the_editor'));
+		// add_filter('screen_layout_columns', array(__CLASS__, 'force_columns'));
+		add_filter( 'add_meta_boxes', array( __CLASS__, 'maybe_switch_editor' ), 10, 2 );
+		add_filter( 'wp_insert_post_data', array( __CLASS__, 'generate_post_content' ), 10, 2 );
+		add_filter( 'save_post', array( __CLASS__, 'save_post' ), 10, 2 );
 
 		$saver = new Rotor_MarkdownEditor_Saver();
+	}
+
+	/**
+	 * Disable TinyMCE if the current post is Markdown
+	 *
+	 * @wp-action add_meta_boxes
+	 * @param string $post_type
+	 * @param WP_Post $post
+	 */
+	public static function maybe_switch_editor( $post_type, $post ) {
+		global $pagenow;
+
+		// Check that we're on an editor page
+		if ( ! is_admin() || ( $pagenow !== 'post.php' && $pagenow !== 'post-new.php' ) ) {
+			return;
+		}
+
+		// Check that we want Markdown
+		if ( ! self::post_is_markdown( $post ) ) {
+			return;
+		}
+
+		add_filter( 'user_can_richedit', '__return_false', 99 );
+		add_filter( 'the_editor', array(__CLASS__, 'the_editor') );
+		add_filter( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
+		add_filter( 'media_buttons', function () {
+			echo '<button name="rotormd_switch" value="markdown" class="button">Switch to Markdown</button>';
+		});
 	}
 
 	/**
@@ -28,7 +55,7 @@ class Rotor_MarkdownEditor {
 	 *
 	 * Enqueues scripts as needed
 	 */
-	public static function page_load() {
+	public static function enqueue() {
 		wp_enqueue_script('marked',              plugins_url('js/marked.js', __FILE__));
 		wp_enqueue_script('codemirror',          plugins_url('js/codemirror.js', __FILE__), array(), '2.35');
 		wp_enqueue_script('codemirror-markdown', plugins_url('js/markdown.js', __FILE__), array('codemirror'), '2.35');
@@ -42,14 +69,20 @@ class Rotor_MarkdownEditor {
 		wp_enqueue_style('codemirror',     plugins_url('css/codemirror.css', __FILE__), array(), '2.35');
 		wp_enqueue_style('rotor-markdown', plugins_url('css/editor.css', __FILE__), array('codemirror'));
 
-		add_filter( 'user_can_richedit', '__return_false', 99 );
 	}
 
-	/**
-	 * Force the post edit page into a single column
-	 */
-	public static function force_columns() {
-		return array('post' => 1);
+	public static function post_is_markdown( $post ) {
+		$post = get_post( $post );
+		if ( get_post_meta( $post->ID, '_rotor_markdown', true ) === true ) {
+			return true;
+		}
+
+		// Legacy support, upgrade while we're here
+		if ( $post->post_content !== $post->post_content_filtered ) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -126,5 +159,27 @@ class Rotor_MarkdownEditor {
 		array_unshift($mce_css, includes_url('js/tinymce/themes/advanced/skins/wp_theme/content.css'));
 
 		return $mce_css;
+	}
+
+	public static function generate_post_content( $data, $postarr ) {
+		return $data;
+	}
+
+	public static function save_post( $ID, $post ) {
+		// Are we switching?
+		if ( ! empty( $_POST['rotormd_switch'] ) ) {
+			switch ( $_POST['rotormd_switch'] ) {
+				case 'markdown':
+					update_post_meta( $ID, '_rotor_markdown', true );
+					break;
+
+				case 'html':
+					update_post_meta( $ID, '_rotor_markdown', false );
+					break;
+
+				default:
+					// We could report this.
+			}
+		}
 	}
 }

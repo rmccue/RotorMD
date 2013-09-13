@@ -38,7 +38,7 @@ class Rotor_MarkdownEditor_Saver {
 		$post_id = array_shift($params);
 		// prime the post cache
 		$post = get_post($post_id);
-		if ( ! empty($post->post_content_filtered) )
+		if ( ! $this->is_markdown( $post ) )
 			$post->post_content = $post->post_content_filtered;
 		wp_cache_delete($post->ID, 'posts');
 		wp_cache_add($post->ID, $post, 'posts');
@@ -56,6 +56,9 @@ class Rotor_MarkdownEditor_Saver {
 		// checks
 		#$nonced = ( isset( $_POST['_sd_markdown_nonce'] ) && wp_verify_nonce( $_POST['_sd_markdown_nonce'], 'sd-markdown-save' ) );
 		$id = ( isset( $postarr['ID']) ) ? $postarr['ID'] : 0;
+
+		if ( ! $this->is_markdown( $id ) )
+			return $data;
 
 		$data['post_content_filtered'] = $data['post_content'];
 		$data['post_content'] = $this->process($data['post_content'], $id);
@@ -86,12 +89,12 @@ class Rotor_MarkdownEditor_Saver {
 	}
 
 	private function is_markdown( $id ) {
-		return true;
+		return Rotor_MarkdownEditor::post_is_markdown($id);
 	}
 
 	public function edit_post_content( $content, $id ) {
 		$post = get_post( $id );
-		if ( $post && ! empty( $post->post_content_filtered ) )
+		if ( $post && $this->is_markdown( $id ) )
 			$content = $post->post_content_filtered;
 		return $content;
 	}
